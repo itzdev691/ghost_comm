@@ -5,4 +5,4 @@
 .vscode/ipch
 .vscode
 platformio.ini
-.DS_STORE
+.DS_Store
