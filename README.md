@@ -268,4 +268,19 @@ python3 -m platformio device monitor
 - The peer table is runtime-managed and prunes entries that have not been seen recently.
 - The current code is a mesh-like discovery and messaging layer, not a full routed multi-hop mesh.
 - If you want true relaying next, the clean extension is to add TTL, message IDs, and rebroadcast rules for selected packet types.
+
+## 🔧 Build System
+
+This project is currently built using the **Arduino framework** (via PlatformIO), enabling rapid prototyping and ease of development on ESP32 devices.
+
+### 🔮 Future Plans
+
+The project is planned to be migrated to the **ESP-IDF (Espressif IoT Development Framework)** in the future. This transition will provide:
+
+- Lower-level hardware control  
+- Improved performance and memory management  
+- Better scalability for advanced mesh networking features  
+- Native access to ESP32 capabilities and optimizations  
+
+The Arduino-based implementation serves as a flexible foundation while the system architecture matures.
 >>>>>>> master
