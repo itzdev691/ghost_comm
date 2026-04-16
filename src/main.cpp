@@ -21,10 +21,10 @@ constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
 #ifndef STATUS_BUTTON_PIN
 #define STATUS_BUTTON_PIN 12  // Default fallback
 #endif
-#ifndef OLED_SDA_PIN
+#ifndef OLED_SDA_PIN 
 #define OLED_SDA_PIN 13  // Default fallback
 #endif
-#ifndef OLED_SCL_PIN
+#ifndef OLED_SCL_PIN 
 #define OLED_SCL_PIN 27  // Default fallback
 #endif
 constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
