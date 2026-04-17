@@ -6,10 +6,10 @@
 #include "Network/mesh.h"
 
 // Shared packet constants. All nodes must agree on these values to understand each other.
-inline constexpr uint32_t MAGIC = 0x47484F53;  // "GHOS"
-inline constexpr uint16_t PROTOCOL_VERSION = 2;
-inline constexpr size_t NODE_ID_LEN = 16;
-inline constexpr size_t MESSAGE_TEXT_LEN = 32;
+static constexpr uint32_t MAGIC = 0x47484F53;  // "GHOS"
+static constexpr uint16_t PROTOCOL_VERSION = 2;
+static constexpr size_t NODE_ID_LEN = 16;
+static constexpr size_t MESSAGE_TEXT_LEN = 32;
 
 // Compact wire format used for every ESP-NOW packet in this project.
 struct MeshMessage {
