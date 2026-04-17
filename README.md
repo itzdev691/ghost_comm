@@ -73,3 +73,18 @@ Defines a standard API:
 ```cpp
 send(packet);
 onReceive(callback);
+```
+
+---
+
+## Building and hardware configuration
+
+Firmware does **not** depend on a specific IDE. You can build with **Arduino IDE**, **arduino-cli**, **CMake** (ESP-IDF / Arduino as component), **PlatformIO**, or another toolchain that compiles the `src/` tree.
+
+### OLED I2C pins
+
+Default **SDA/SCL GPIO** values live in **[`src/Config/board_user_config.h`](src/Config/board_user_config.h)**. Edit that file for your wiring (or add an `#elif defined(YOUR_BOARD_MACRO)` branch).
+
+Known layouts are selected via preprocessor symbols such as `BOARD_ESP32_DOIT`, `BOARD_ESP32_S3_ZERO`, and ESP32-C5 (`CONFIG_IDF_TARGET_ESP32C5` / `ARDUINO_ESP32C5_DEV`). Other boards use the generic fallback in that file (classic ESP32-style defaults — always verify against your schematic).
+
+Optional: any build system may pass `-DOLED_SDA_PIN` / `-DOLED_SCL_PIN` to override both pins for automation or CI.
