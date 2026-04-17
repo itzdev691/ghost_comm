@@ -21,12 +21,16 @@ constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
 #ifndef STATUS_BUTTON_PIN
 #define STATUS_BUTTON_PIN 12  // Default fallback
 #endif
-#ifndef OLED_SDA_PIN 
-#define OLED_SDA_PIN 13  // Default fallback
+#if !defined(OLED_SDA_PIN) || !defined(OLED_SCL_PIN)
+  #if defined(CONFIG_IDF_TARGET_ESP32C5)
+    #define OLED_SDA_PIN 2
+    #define OLED_SCL_PIN 3
+  #else
+    #define OLED_SDA_PIN 21
+    #define OLED_SCL_PIN 22
+  #endif
 #endif
-#ifndef OLED_SCL_PIN 
-#define OLED_SCL_PIN 27  // Default fallback
-#endif
+
 constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
 constexpr uint8_t OLED_I2C_ADDRESS_PRIMARY = 0x3C;
 constexpr uint8_t OLED_I2C_ADDRESS_SECONDARY = 0x3D;
