@@ -3,12 +3,12 @@
 // ---------------------------------------------------------------------------
 // User-editable OLED I2C GPIO (PlatformIO-independent)
 //
-// Edit the values in the final #else branch, or add #elif defined(YOUR_BOARD)
-// with your SDA/SCL pins. Pinout must match your hardware.
+// CUSTOMIZATION OPTIONS (in priority order):
+// 1. Add -DOLED_SDA_PIN=X -DOLED_SCL_PIN=Y to your build flags
+// 2. Add #elif defined(YOUR_BOARD) branch below with your pins
+// 3. Edit the generic #else fallback pins (currently 21/22)
 //
-// Resolution: optional compile-time -DOLED_SDA_PIN / -DOLED_SCL_PIN (any build
-// system) overrides this file. Otherwise known boards use the branches below,
-// then the generic fallback.
+// Pinout must match your hardware. Verify against your PCB datasheet.
 // ---------------------------------------------------------------------------
 
 #if !defined(OLED_SDA_PIN) || !defined(OLED_SCL_PIN)
@@ -18,15 +18,22 @@
 #define OLED_SCL_PIN 27
 
 #elif defined(BOARD_ESP32_S3_ZERO)
-#define OLED_SDA_PIN 6
-#define OLED_SCL_PIN 7
+#define OLED_SDA_PIN 8
+#define OLED_SCL_PIN 9
 
 #elif defined(CONFIG_IDF_TARGET_ESP32C5) || defined(ARDUINO_ESP32C5_DEV)
-#define OLED_SDA_PIN 6
-#define OLED_SCL_PIN 7
+#define OLED_SDA_PIN 2
+#define OLED_SCL_PIN 3
+
+// *** ADD YOUR CUSTOM BOARD HERE ***
+// Example:
+// #elif defined(MY_CUSTOM_BOARD)
+// #define OLED_SDA_PIN 18
+// #define OLED_SCL_PIN 19
 
 #else
 // Generic ESP32 classic: common module defaults — verify against your PCB.
+// EDIT THESE if using a non-standard pinout:
 #define OLED_SDA_PIN 21
 #define OLED_SCL_PIN 22
 

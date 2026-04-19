@@ -58,9 +58,12 @@ void setup() {
 }
 
 void loop() {
+  loopDisplay();  // ← added, handles pending renderDisplay() safely
+
   handleStatusButton();
 
   if (millis() - lastDiscoveryMs >= DISCOVERY_INTERVAL_MS) {
+    lastDiscoveryMs = millis();  // ← was missing, prevents continuous firing
     sendDiscovery();
   }
 

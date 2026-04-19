@@ -26,23 +26,43 @@ static bool probeI2CAddress(uint8_t address) {
 
 bool initDisplay() {
   Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+  Wire.setClock(100000);
+  Wire.setTimeout(500);  // ← add this, increase from default 50ms
+  delay(50);
 
-  if (probeI2CAddress(OLED_I2C_ADDRESS_SECONDARY)) {
-    oledAddress = OLED_I2C_ADDRESS_SECONDARY;
-  } else if (probeI2CAddress(OLED_I2C_ADDRESS_PRIMARY)) {
-    oledAddress = OLED_I2C_ADDRESS_PRIMARY;
+  Serial.println("Probing 0x3C...");
+  bool found3C = probeI2CAddress(OLED_I2C_ADDRESS_PRIMARY);
+  Serial.printf("0x3C result: %d\n", found3C);
+
+  if (found3C) {
+      oledAddress = OLED_I2C_ADDRESS_PRIMARY;
   } else {
-    Serial.println("OLED I2C not found at 0x3C or 0x3D");
-    oledReady = false;
-    return false;
+      delay(10);
+      Serial.println("Probing 0x3D...");
+      bool found3D = probeI2CAddress(OLED_I2C_ADDRESS_SECONDARY);
+      Serial.printf("0x3D result: %d\n", found3D);
+
+      if (found3D) {
+          oledAddress = OLED_I2C_ADDRESS_SECONDARY;
+      } else {
+          Serial.println("OLED I2C not found at 0x3C or 0x3D");
+          oledReady = false;
+          return false;
+      }
   }
+
+  Serial.printf("Calling g_oled.begin() at 0x%02X\n", oledAddress);
 
   if (!g_oled.begin(oledAddress, true)) {
-    Serial.printf("OLED begin() failed at 0x%02X\n", oledAddress);
-    oledReady = false;
-    return false;
+      Serial.printf("OLED begin() failed at 0x%02X\n", oledAddress);
+      oledReady = false;
+      return false;
   }
 
+  delay(100);  // ← add this, let display fully initialize before writing
+  Wire.setClock(400000);  // ← moved after begin(), now bump speed
+
+  Serial.println("OLED init success");
   oledReady = true;
   g_oled.fillScreen(SH110X_WHITE);
   g_oled.display();
@@ -51,13 +71,6 @@ bool initDisplay() {
   g_oled.display();
   delay(500);
 
-  g_oled.clearDisplay();
-  g_oled.setTextSize(1);
-  g_oled.setTextColor(SH110X_WHITE);
-  g_oled.setCursor(0, 0);
-  g_oled.println("Booting..");
-  g_oled.display();
-  delay(1000);
   g_oled.clearDisplay();
   g_oled.setTextSize(1);
   g_oled.setTextColor(SH110X_WHITE);
@@ -138,7 +151,7 @@ void renderDisplay() {
   g_oled.setTextSize(1);
   g_oled.setTextColor(SH110X_WHITE);
   g_oled.setCursor(0, 0);
-  g_oled.println(F("ESP-NOW Mesh"));
+  g_oled.println(F("ZypheraMesh"));
   g_oled.println(selfLine);
   g_oled.println(peerLine);
   g_oled.println(oledStatusLine);
@@ -151,4 +164,18 @@ void renderDisplay() {
   g_oled.println(F("Unknown Board"));
 #endif
   g_oled.display();
+}
+
+// ... renderDisplay() ...
+
+static volatile bool renderPending = false;
+
+void requestRender() {
+    renderPending = true;
+}
+
+void loopDisplay() {
+    if (!renderPending) return;
+    renderPending = false;
+    renderDisplay();
 }

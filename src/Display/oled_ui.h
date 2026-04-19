@@ -4,6 +4,8 @@
 
 bool initDisplay();
 void renderDisplay();
+void loopDisplay();
+void requestRender();
 
 void setDisplayStatus(const char* message);
 void setDisplayEvent(const char* message);
