@@ -48,3 +48,4 @@ platformio.ini
 .cache/clangd/index/status_ping_good.cpp.32D3C769C1664E88.idx
 .cache/clangd/index/status_ping_ok.cpp.453EC5704BEA51FC.idx
 .cache/clangd/index/status_ping.h.D1300D8266B0F077.idx
+compile_commands.json
