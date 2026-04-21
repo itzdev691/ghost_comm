@@ -1,5 +1,7 @@
+file(GLOB_RECURSE SOURCES "*.cpp")
+
 idf_component_register(
-    SRCS "main.cpp"
+    SRCS ${SOURCES}
     INCLUDE_DIRS "."
     REQUIRES arduino
 )
