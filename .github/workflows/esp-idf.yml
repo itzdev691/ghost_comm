@@ -23,10 +23,10 @@ jobs:
         target: esp32
         path: '.'
         command: |
-          . $IDF_PATH/export.sh
-          cd $IDF_PATH/components
+          . ${IDF_PATH}/export.sh
+          cd ${IDF_PATH}/components
           git clone --depth 1 https://github.com/espressif/arduino-esp32.git arduino
           cd arduino
           git submodule update --init --recursive
-          cd $GITHUB_WORKSPACE
+          cd /app/${{ github.repository }}
           idf.py build
