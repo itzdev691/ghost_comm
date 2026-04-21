@@ -25,7 +25,7 @@ jobs:
         command: |
           . ${IDF_PATH}/export.sh
           cd ${IDF_PATH}/components
-          git clone --depth 1 https://github.com/espressif/arduino-esp32.git arduino
+          git clone --depth 1 --branch idf-release/v5.3 https://github.com/espressif/arduino-esp32.git arduino
           cd arduino
           git submodule update --init --recursive
           cd /app/${{ github.repository }}
