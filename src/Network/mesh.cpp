@@ -12,6 +12,7 @@
 #include "Mesh/mesh_packet.h"
 #include "Network/node_state.h"
 #include "Network/peer_registry.h"
+#include "Status/onboard_led.h"
 
 #include "Config/app_config.h"
 
@@ -144,6 +145,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
     return;
   }
 
+  noteReceiveActivity();
   upsertPeer(macAddr, message.senderId);
 
   MessageType type = static_cast<MessageType>(message.type);
