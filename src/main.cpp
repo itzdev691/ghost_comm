@@ -54,7 +54,10 @@ void setup() {
   Serial.printf("Button pin: GPIO %u\n", STATUS_BUTTON_PIN);
   Serial.printf("Onboard LED pin: GPIO %u\n", ONBOARD_LED_PIN);
   Serial.printf("OLED SDA: GPIO %u, SCL: GPIO %u\n", OLED_SDA_PIN, OLED_SCL_PIN);
-  Serial.printf("Press button on GPIO %u to broadcast status: Good\n", STATUS_BUTTON_PIN);
+  Serial.printf(
+      "Press button on GPIO %u: short press=Good, hold %lu ms=Bad\n",
+      STATUS_BUTTON_PIN,
+      static_cast<unsigned long>(STATUS_BAD_HOLD_MS));
   Serial.printf("OLED I2C wiring SDA=%u SCL=%u\n", OLED_SDA_PIN, OLED_SCL_PIN);
 
   sendDiscovery();
@@ -63,6 +66,7 @@ void setup() {
 void loop() {
   loopDisplay();  // ← added, handles pending renderDisplay() safely
   loopOnboardLed();
+  loopMesh();
 
   handleStatusButton();
 

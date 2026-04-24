@@ -29,7 +29,9 @@ static constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
 #endif
 
 static constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
+static constexpr uint32_t STATUS_BAD_HOLD_MS = 1000;
 static constexpr uint32_t RX_LED_HOLD_MS = 250;
+static constexpr uint32_t DISCOVERY_ACK_DELAY_MS = 150;
 
 static constexpr uint8_t OLED_I2C_ADDRESS_PRIMARY = 0x3C;
 static constexpr uint8_t OLED_I2C_ADDRESS_SECONDARY = 0x3D;
