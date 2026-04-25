@@ -50,3 +50,4 @@ platformio.ini
 .cache/clangd/index/status_ping.h.D1300D8266B0F077.idx
 .cache/clangd/index/onboard_led.h.DC822D2FB639BCEA.idx
 boards/waveshare_esp32_s3_zero.json
+src/Tests/waveshare_led_test.cpp

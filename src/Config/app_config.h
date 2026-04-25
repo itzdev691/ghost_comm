@@ -15,7 +15,9 @@ static constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
 #endif
 
 #ifndef ONBOARD_LED_PIN
-#if defined(LED_BUILTIN)
+#if defined(BOARD_ESP32_S3_ZERO)
+#define ONBOARD_LED_PIN 21
+#elif defined(LED_BUILTIN)
 #define ONBOARD_LED_PIN LED_BUILTIN
 #elif defined(BOARD_ESP32_DOIT)
 #define ONBOARD_LED_PIN 2
@@ -24,9 +26,21 @@ static constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
 #endif
 #endif
 
+#ifndef ONBOARD_LED_USES_NEOPIXEL
+#if defined(BOARD_ESP32_S3_ZERO)
+#define ONBOARD_LED_USES_NEOPIXEL 1
+#else
+#define ONBOARD_LED_USES_NEOPIXEL 0
+#endif
+#endif
+
 #ifndef ONBOARD_LED_ACTIVE_HIGH
 #define ONBOARD_LED_ACTIVE_HIGH 1
 #endif
+
+static constexpr uint8_t ONBOARD_LED_RX_RED = 0;
+static constexpr uint8_t ONBOARD_LED_RX_GREEN = 24;
+static constexpr uint8_t ONBOARD_LED_RX_BLUE = 0;
 
 static constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
 static constexpr uint32_t STATUS_BAD_HOLD_MS = 1000;
