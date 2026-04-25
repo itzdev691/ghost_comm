@@ -12,6 +12,7 @@
 #include "Mesh/mesh_packet.h"
 #include "Network/node_state.h"
 #include "Network/peer_registry.h"
+#include "Status/onboard_led.h"
 
 #include "Config/app_config.h"
 
@@ -21,6 +22,14 @@ char selfNodeId[NODE_ID_LEN] = "";
 const uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 uint32_t lastDiscoveryMs = 0;
+
+struct PendingAck {
+  bool active = false;
+  uint8_t mac[6] = {0};
+  uint32_t sendAtMs = 0;
+};
+
+static PendingAck g_pendingAcks[MAX_PEERS];
 
 static void initNodeId() {
   const char* configuredNodeName = getNodeName();
@@ -87,6 +96,50 @@ static void logSendResult(const uint8_t* macAddr, esp_now_send_status_t status) 
       status == ESP_NOW_SEND_SUCCESS ? "SUCCESS" : "FAIL");
 }
 
+static PendingAck* findPendingAck(const uint8_t* macAddr) {
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    if (g_pendingAcks[i].active && std::memcmp(g_pendingAcks[i].mac, macAddr, sizeof(g_pendingAcks[i].mac)) == 0) {
+      return &g_pendingAcks[i];
+    }
+  }
+
+  return nullptr;
+}
+
+static PendingAck* reservePendingAckSlot() {
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    if (!g_pendingAcks[i].active) {
+      return &g_pendingAcks[i];
+    }
+  }
+
+  return nullptr;
+}
+
+static void scheduleDiscoveryAck(const uint8_t* targetMac) {
+  if (targetMac == nullptr) {
+    return;
+  }
+
+  PendingAck* pendingAck = findPendingAck(targetMac);
+  if (pendingAck == nullptr) {
+    pendingAck = reservePendingAckSlot();
+  }
+
+  if (pendingAck == nullptr) {
+    Serial.printf("Dropped delayed ACK for %s: queue full\n", macToString(targetMac).c_str());
+    return;
+  }
+
+  pendingAck->active = true;
+  std::memcpy(pendingAck->mac, targetMac, sizeof(pendingAck->mac));
+  pendingAck->sendAtMs = millis() + DISCOVERY_ACK_DELAY_MS;
+  Serial.printf(
+      "Queued ACK to %s in %lu ms\n",
+      macToString(targetMac).c_str(),
+      static_cast<unsigned long>(DISCOVERY_ACK_DELAY_MS));
+}
+
 bool ensureEspNowPeer(const uint8_t* macAddr) {
   if (esp_now_is_peer_exist(macAddr)) {
     return true;
@@ -144,6 +197,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
     return;
   }
 
+  noteReceiveActivity();
   upsertPeer(macAddr, message.senderId);
 
   MessageType type = static_cast<MessageType>(message.type);
@@ -157,7 +211,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
       setDisplayStatus("Discovery rx");
       setDisplayEventFromPeer("DISC", macAddr);
       renderDisplay();
-      sendDiscoveryAck(macAddr);
+      scheduleDiscoveryAck(macAddr);
       printPeers();
       break;
 
@@ -246,6 +300,26 @@ void initEspNow() {
     setDisplayStatus("ESP-NOW ready");
     setDisplayEvent("Broadcast peer");
     renderDisplay();
+  }
+}
+
+void loopMesh() {
+  uint32_t now = millis();
+
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    PendingAck& pendingAck = g_pendingAcks[i];
+    if (!pendingAck.active) {
+      continue;
+    }
+
+    if (static_cast<int32_t>(now - pendingAck.sendAtMs) < 0) {
+      continue;
+    }
+
+    sendDiscoveryAck(pendingAck.mac);
+    pendingAck.active = false;
+    std::memset(pendingAck.mac, 0, sizeof(pendingAck.mac));
+    pendingAck.sendAtMs = 0;
   }
 }
 

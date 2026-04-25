@@ -48,6 +48,6 @@ platformio.ini
 .cache/clangd/index/status_ping_good.cpp.32D3C769C1664E88.idx
 .cache/clangd/index/status_ping_ok.cpp.453EC5704BEA51FC.idx
 .cache/clangd/index/status_ping.h.D1300D8266B0F077.idx
-compile_commands.json
-idf_compoment.yml
-idf_component.yml.orig
+.cache/clangd/index/onboard_led.h.DC822D2FB639BCEA.idx
+boards/waveshare_esp32_s3_zero.json
+src/Tests/waveshare_led_test.cpp

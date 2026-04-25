@@ -14,6 +14,7 @@ extern const uint8_t BROADCAST_MAC[6];
 
 void configureWiFi();
 void initEspNow();
+void loopMesh();
 
 bool ensureEspNowPeer(const uint8_t* macAddr);
 void removeEspNowPeer(const uint8_t* macAddr);
