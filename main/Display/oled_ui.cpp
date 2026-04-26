@@ -90,7 +90,7 @@ bool initDisplay() {
   g_oled.setTextSize(1);
   g_oled.setTextColor(SH110X_WHITE);
   g_oled.setCursor(0, 0);
-  g_oled.println("ESP-NOW initialized");
+  g_oled.println("ZypheraOS initialized");
   g_oled.display();
   delay(2000);
 

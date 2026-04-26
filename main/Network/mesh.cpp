@@ -30,6 +30,23 @@ struct PendingAck {
 };
 
 static PendingAck g_pendingAcks[MAX_PEERS];
+static uint32_t g_nextMessageId = 1;
+
+struct SeenMessage {
+  bool active = false;
+  uint8_t originMac[6] = {0};
+  uint32_t messageId = 0;
+
+};
+
+struct PendingForward {
+  bool active = false;
+  MeshMessage message = {};
+  uint32_t sendAtMs = 0;
+};
+
+static SeenMessage g_seenMessages[SEEN_MESSAGE_CACHE_SIZE];
+static PendingForward g_pendingForwards[MAX_PEERS];
 
 static void initNodeId() {
   const char* configuredNodeName = getNodeName();
@@ -140,6 +157,97 @@ static void scheduleDiscoveryAck(const uint8_t* targetMac) {
       static_cast<unsigned long>(DISCOVERY_ACK_DELAY_MS));
 }
 
+static bool sameMessageId(const MeshMessage& a, const MeshMessage& b) {
+  return std::memcmp(a.originMac, b.originMac, sizeof(a.originMac)) == 0 &&
+         a.messageId == b.messageId;
+}
+
+static bool hasSeenMessage(const MeshMessage& message) {
+  for (size_t i = 0; i < SEEN_MESSAGE_CACHE_SIZE; i++) {
+    if (!g_seenMessages[i].active) {
+      continue;
+    }
+
+    if (std::memcmp(g_seenMessages[i].originMac, message.originMac, sizeof(message.originMac)) == 0 &&
+        g_seenMessages[i].messageId == message.messageId) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static void rememberSeenMessage(const MeshMessage& message) {
+  for (size_t i = 0; i < SEEN_MESSAGE_CACHE_SIZE; i++) {
+    if (!g_seenMessages[i].active) {
+      g_seenMessages[i].active = true;
+      std::memcpy(g_seenMessages[i].originMac, message.originMac, sizeof(message.originMac));
+      g_seenMessages[i].messageId = message.messageId;
+      return;
+    }
+  }
+
+  static size_t overwriteIndex = 0;
+  g_seenMessages[overwriteIndex].active = true;
+  std::memcpy(g_seenMessages[overwriteIndex].originMac, message.originMac, sizeof(message.originMac));
+  g_seenMessages[overwriteIndex].messageId = message.messageId;
+  overwriteIndex = (overwriteIndex + 1) % SEEN_MESSAGE_CACHE_SIZE;
+}
+
+static bool shouldForward(MessageType type) {
+  return type != MessageType::DiscoveryAck;
+}
+
+static bool sendMeshMessage(const uint8_t* targetMac, const MeshMessage& message) {
+  if (targetMac == nullptr) {
+    Serial.println("Send failed: target MAC is missing");
+    return false;
+  }
+
+  if (std::memcmp(targetMac, BROADCAST_MAC, 6) != 0 && !ensureEspNowPeer(targetMac)) {
+    return false;
+  }
+
+  esp_err_t err = esp_now_send(targetMac, reinterpret_cast<const uint8_t*>(&message), sizeof(message));
+  if (err != ESP_OK) {
+    Serial.printf("Send failed: %d\n", err);
+    setDisplayStatus("Send failed");
+    setDisplayEvent(message.text);
+    renderDisplay();
+    return false;
+  }
+
+  return true;
+}
+
+static void queueForward(const MeshMessage& incoming) {
+  if (incoming.ttl == 0) {
+    return;
+  }
+
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    if (g_pendingForwards[i].active && sameMessageId(g_pendingForwards[i].message, incoming)) {
+      return;
+    }
+  }
+
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    if (g_pendingForwards[i].active) {
+      continue;
+    }
+
+    g_pendingForwards[i].active = true;
+    g_pendingForwards[i].message = incoming;
+    g_pendingForwards[i].message.ttl--;
+    std::memcpy(g_pendingForwards[i].message.senderMac, selfMac, sizeof(selfMac));
+    std::snprintf(g_pendingForwards[i].message.senderId, sizeof(g_pendingForwards[i].message.senderId), "%s", selfNodeId);
+    g_pendingForwards[i].sendAtMs = millis() + random(FORWARD_DELAY_MIN_MS, FORWARD_DELAY_MAX_MS + 1);
+    return;
+  }
+  
+  Serial.println("Dropped forward: queue full");
+}
+
 bool ensureEspNowPeer(const uint8_t* macAddr) {
   if (esp_now_is_peer_exist(macAddr)) {
     return true;
@@ -197,6 +305,16 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
     return;
   }
 
+  if (hasSeenMessage(message)) {
+    Serial.printf(
+        "Dropped duplicate message %lu from %s\n",
+        static_cast<unsigned long>(message.messageId),
+        macToString(macAddr).c_str());
+    return;
+  }
+
+  rememberSeenMessage(message);
+
   noteReceiveActivity();
   upsertPeer(macAddr, message.senderId);
 
@@ -244,6 +362,10 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
           message.type,
           macToString(macAddr).c_str());
       break;
+  }
+
+  if (message.ttl > 0 && shouldForward(type)) {
+    queueForward(message);
   }
 }
 
@@ -321,32 +443,41 @@ void loopMesh() {
     std::memset(pendingAck.mac, 0, sizeof(pendingAck.mac));
     pendingAck.sendAtMs = 0;
   }
+
+  for (size_t i = 0; i < MAX_PEERS; i++) {
+    PendingForward& pendingForward = g_pendingForwards[i];
+    if (!pendingForward.active) {
+      continue;
+    }
+
+    if (static_cast<int32_t>(now - pendingForward.sendAtMs) < 0) {
+      continue;
+    }
+
+    sendMeshMessage(BROADCAST_MAC, pendingForward.message);
+    pendingForward.active = false;
+    pendingForward.message = {};
+    pendingForward.sendAtMs = 0;
+  }
 }
+
 
 bool sendMessage(const uint8_t* targetMac, MessageType type, const char* text) {
-  if (targetMac == nullptr) {
-    Serial.println("Send failed: target MAC is missing");
-    return false;
-  }
-
-  if (std::memcmp(targetMac, BROADCAST_MAC, 6) != 0 && !ensureEspNowPeer(targetMac)) {
-    return false;
-  }
-
   MeshMessage message = {};
-  populateMeshMessage(message, type, selfMac, selfNodeId, text);
+  populateMeshMessage(
+      message,
+      type,
+      selfMac,
+      selfMac,
+      g_nextMessageId++,
+      DEFAULT_FORWARD_TTL,
+      selfNodeId,
+      text);
 
-  esp_err_t err = esp_now_send(targetMac, reinterpret_cast<uint8_t*>(&message), sizeof(message));
-  if (err != ESP_OK) {
-    Serial.printf("Send failed: %d\n", err);
-    setDisplayStatus("Send failed");
-    setDisplayEvent(text);
-    renderDisplay();
-    return false;
-  }
-
-  return true;
+  rememberSeenMessage(message);
+  return sendMeshMessage(targetMac, message);
 }
+
 
 void sendDiscovery() {
   lastDiscoveryMs = millis();

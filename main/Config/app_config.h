@@ -8,6 +8,11 @@
 // Channel and discovery timing (must match across all nodes).
 static constexpr uint8_t ESPNOW_CHANNEL = 6;
 static constexpr uint32_t DISCOVERY_INTERVAL_MS = 5000;
+static constexpr uint8_t DEFAULT_FORWARD_TTL = 3;
+static constexpr uint32_t FORWARD_DELAY_MIN_MS = 25;
+static constexpr uint32_t FORWARD_DELAY_MAX_MS = 90;
+static constexpr size_t SEEN_MESSAGE_CACHE_SIZE = 24;
+
 
 // GPIO pins — overrides via build_flags per board (optional).
 #ifndef STATUS_BUTTON_PIN
