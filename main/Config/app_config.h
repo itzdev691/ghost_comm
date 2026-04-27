@@ -19,6 +19,10 @@ static constexpr size_t SEEN_MESSAGE_CACHE_SIZE = 24;
 #define STATUS_BUTTON_PIN 12
 #endif
 
+#ifndef BAD_STATUS_PIN
+#define BAD_STATUS_PIN 9
+#endif
+
 #ifndef ONBOARD_LED_PIN
 #if defined(BOARD_ESP32_S3_ZERO)
 #define ONBOARD_LED_PIN 21
@@ -48,7 +52,6 @@ static constexpr uint8_t ONBOARD_LED_RX_GREEN = 24;
 static constexpr uint8_t ONBOARD_LED_RX_BLUE = 0;
 
 static constexpr uint32_t BUTTON_DEBOUNCE_MS = 50;
-static constexpr uint32_t STATUS_BAD_HOLD_MS = 1000;
 static constexpr uint32_t RX_LED_HOLD_MS = 250;
 static constexpr uint32_t DISCOVERY_ACK_DELAY_MS = 150;
 

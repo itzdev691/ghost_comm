@@ -9,10 +9,12 @@
 static bool lastButtonReading = LOW;
 static bool buttonState = LOW;
 static uint32_t lastButtonChangeMs = 0;
-static uint32_t buttonPressStartedMs = 0;
+static bool lastBadReading = LOW;
+static bool badState = LOW;
+static uint32_t lastBadChangeMs = 0;
 
 static void broadcastStatus(const char* label, const char* displayStatus, const char* displayEvent, bool sendBad) {
-  Serial.printf("Button action -> broadcasting status: %s\n", label);
+  Serial.printf("Status input -> broadcasting status: %s\n", label);
   setDisplayStatus(displayStatus);
   setDisplayEvent(displayEvent);
   renderDisplay();
@@ -25,35 +27,33 @@ static void broadcastStatus(const char* label, const char* displayStatus, const 
   sendGoodStatusPing();
 }
 
-void handleStatusButton() {
-  bool reading = digitalRead(STATUS_BUTTON_PIN);
+void handleStatusInputs() {
+  const bool reading = digitalRead(STATUS_BUTTON_PIN);
+  const bool badReading = digitalRead(BAD_STATUS_PIN);
 
   if (reading != lastButtonReading) {
     lastButtonChangeMs = millis();
     lastButtonReading = reading;
   }
 
-  if (millis() - lastButtonChangeMs < BUTTON_DEBOUNCE_MS) {
+  if (badReading != lastBadReading) {
+    lastBadChangeMs = millis();
+    lastBadReading = badReading;
+  }
+
+  if (millis() - lastButtonChangeMs >= BUTTON_DEBOUNCE_MS && reading != buttonState) {
+    buttonState = reading;
+    if (buttonState == LOW) {
+      broadcastStatus("Good", "Broadcast Good", "Good input", false);
+    }
+  }
+
+  if (millis() - lastBadChangeMs < BUTTON_DEBOUNCE_MS || badReading == badState) {
     return;
   }
 
-  if (reading == buttonState) {
-    return;
+  badState = badReading;
+  if (badState == LOW) {
+    broadcastStatus("Bad", "Broadcast Bad", "Bad input", true);
   }
-
-  buttonState = reading;
-  if (buttonState == HIGH) {
-    buttonPressStartedMs = millis();
-    return;
-  }
-
-  uint32_t heldMs = millis() - buttonPressStartedMs;
-  buttonPressStartedMs = 0;
-
-  if (heldMs >= STATUS_BAD_HOLD_MS) {
-    broadcastStatus("Bad", "Broadcast Bad", "Long press", true);
-    return;
-  }
-
-  broadcastStatus("Good", "Broadcast Good", "Short press", false);
 }

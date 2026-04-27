@@ -52,3 +52,6 @@ platformio.ini
 boards/waveshare_esp32_s3_zero.json
 src/Tests/waveshare_led_test.cpp
 compile_commands.json
+scripts/fix_riscv_toolchain.py
+scripts/__pycache__/fix_riscv_toolchain.cpython-314.pyc
+main/idf_component.yml.orig

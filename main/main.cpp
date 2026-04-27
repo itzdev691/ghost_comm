@@ -7,6 +7,10 @@
 #include "Network/node_state.h"
 #include "Network/peer_registry.h"
 #include "Status/onboard_led.h"
+#include "CrashLogger.h"
+#include <esp_task_wdt.h>
+
+CrashLogger crashLogger;
 
 static void onPeerNewUi(const uint8_t* macAddr) {
   setDisplayStatus("Peer learned");
@@ -23,7 +27,17 @@ static void onPeerLostUi(const uint8_t* macAddr) {
 void setup() {
   Serial.begin(115200);
   delay(500);
+  // Initialize crash logger
+  crashLogger.begin();
+    
+  // Setup watchdog
+  esp_task_wdt_init(10, true);
+  esp_task_wdt_add(NULL);
+  
+  Serial.println("System ready");
+  delay(500);
   pinMode(STATUS_BUTTON_PIN, INPUT_PULLDOWN);
+  pinMode(BAD_STATUS_PIN, INPUT_PULLDOWN);
 
   configureWiFi();
   initOnboardLed();
@@ -51,24 +65,23 @@ void setup() {
 #endif
   Serial.printf("MAC: %s\n", macToString(selfMac).c_str());
   Serial.printf("Node ID: %s\n", selfNodeId);
-  Serial.printf("Button pin: GPIO %u\n", STATUS_BUTTON_PIN);
+  Serial.printf("Good status pin: GPIO %u\n", STATUS_BUTTON_PIN);
+  Serial.printf("Bad status pin: GPIO %u\n", BAD_STATUS_PIN);
   Serial.printf("Onboard LED pin: GPIO %u\n", ONBOARD_LED_PIN);
   Serial.printf("OLED SDA: GPIO %u, SCL: GPIO %u\n", OLED_SDA_PIN, OLED_SCL_PIN);
-  Serial.printf(
-      "Press button on GPIO %u: short press=Good, hold %lu ms=Bad\n",
-      STATUS_BUTTON_PIN,
-      static_cast<unsigned long>(STATUS_BAD_HOLD_MS));
+  Serial.printf("Press GPIO %u for Good, GPIO %u for Bad\n", STATUS_BUTTON_PIN, BAD_STATUS_PIN);
   Serial.printf("OLED I2C wiring SDA=%u SCL=%u\n", OLED_SDA_PIN, OLED_SCL_PIN);
 
   sendDiscovery();
 }
 
 void loop() {
+  esp_task_wdt_reset();
   loopDisplay();  // ← added, handles pending renderDisplay() safely
   loopOnboardLed();
   loopMesh();
 
-  handleStatusButton();
+  handleStatusInputs();
 
   if (millis() - lastDiscoveryMs >= DISCOVERY_INTERVAL_MS) {
     lastDiscoveryMs = millis();  // ← was missing, prevents continuous firing
