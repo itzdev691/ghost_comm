@@ -7,7 +7,7 @@
 #include "Network/node_state.h"
 #include "Network/peer_registry.h"
 #include "Status/onboard_led.h"
-#include "CrashLogger.h"
+#include "CrashLog/CrashLogger.h"
 #include <esp_task_wdt.h>
 
 CrashLogger crashLogger;
