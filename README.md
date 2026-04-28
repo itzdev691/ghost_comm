@@ -1,84 +1,91 @@
-# 🌐 Decentralized Mesh Networking Stack
+# 🌐 ZypheraMesh
 
-A radio-agnostic, decentralized mesh networking system for embedded devices — designed to run without any central server.
+**ZypheraMesh** is a radio-agnostic, decentralized mesh networking stack for embedded devices — built to operate without centralized infrastructure.
 
-This project enables devices to **discover, communicate, and relay messages across a mesh network**, with initial validation on ESP-NOW and deployment targeting LoRa.
+It enables devices to **discover peers, exchange data, and relay messages across a distributed mesh network**, with current validation on **ESP-NOW** and future deployment targeting **LoRa**.
 
 ---
 
-## 🧭 Purpose
+## 🧭 Project Goals
 
-The goal is to build a **modular mesh networking stack** that:
+Build a **modular, portable mesh networking stack** that:
 
-- Works across multiple radio technologies
-- Requires **no central infrastructure**
-- Supports **reliable multi-hop communication**
+- Supports multiple radio technologies
+- Operates with **no central server or internet dependency**
+- Enables **reliable multi-hop communication**
+- Can be adapted to different embedded hardware platforms
 
-### Target Environments
+---
+
+## 🎯 Target Environments
 
 | Environment | Radio | Purpose |
-|------------|------|--------|
-| Development | ESP-NOW | Fast iteration, short range |
-| Deployment | LoRa | Long range, real-world usage |
+|------------|------|---------|
+| Development | ESP-NOW | Fast iteration, low-latency local testing |
+| Deployment | LoRa | Long-range, real-world mesh networking |
 
-### 🚫 Non-Goals (for now)
+---
 
-- Mobile apps
+## 🚫 Current Non-Goals
+
+The following are intentionally out of scope for now:
+
+- Mobile applications
 - Cloud dashboards
-- Paid infrastructure/services
+- Paid backend infrastructure
+- Consumer-facing UI layers
 
 ---
 
 ## ✅ Features
 
-### Core Functionality
+## Core Networking Features
 
-- 🔍 Node discovery & neighbor awareness  
+- 🔍 Automatic node discovery & neighbor awareness  
 - 🆔 Unique node addressing (ID + optional label)  
-- 📡 Message types:
+- 📡 Message support:
   - Broadcast
   - Unicast
   - Acknowledgements (ACKs)
-- 🔁 Relay system:
+
+- 🔁 Relay / forwarding system:
   - TTL (time-to-live)
   - Duplicate suppression
-- 🧭 Routing strategies (pluggable & evolving)
-- 💾 Optional store-and-forward support
 
-### Non-Functional Goals
+- 🧭 Routing strategies (modular and evolving)
+- 💾 Optional store-and-forward messaging
+
+## System Design Goals
 
 - 🔌 Radio-agnostic architecture
-- 🔋 Power-efficient operation (sleep/duty cycle)
+- 🔋 Power-efficient operation (sleep / duty-cycle ready)
 - 📶 Reliable packet delivery over distance
-- 📈 Scalable network size & diameter
-- 🔐 Security baseline (authenticity, optional encryption)
+- 📈 Scalable network growth and hop count
+- 🔐 Security baseline (authenticity + optional encryption)
 
 ---
 
 ## 🏗️ Architecture
 
-The system is split into modular layers:
+The stack is organized into modular layers.
 
-### 1. Mesh Core (Radio-Independent)
+## 1. Mesh Core (Radio Independent)
 
-- Packet format (versioned)
-- TTL handling & deduplication
-- Routing & forwarding logic
-- Reliability (ACKs, retries)
+Responsible for:
 
-### 2. Radio Adapter Interface
+- Packet format and versioning
+- TTL handling
+- Duplicate detection
+- Routing and forwarding
+- ACK / retry reliability logic
 
-Defines a standard API:
+## 2. Radio Adapter Interface
+
+Each radio backend implements a common transport API:
 
 ```cpp
 send(packet);
 onReceive(callback);
-```
-
----
-
-## Building and hardware configuration
-
 Firmware does **not** depend on a specific IDE. You can build with **Arduino IDE**, **arduino-cli**, **CMake** (ESP-IDF / Arduino as component), **PlatformIO**, or another toolchain that compiles the `src/` tree.
 
 ### OLED I2C pins
