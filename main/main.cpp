@@ -9,6 +9,8 @@
 #include "Status/onboard_led.h"
 #include "CrashLog/CrashLogger.h"
 #include <esp_task_wdt.h>
+#include "esp_partition.h"
+#include "LittleFS.h"
 
 CrashLogger crashLogger;
 
@@ -27,11 +29,28 @@ static void onPeerLostUi(const uint8_t* macAddr) {
 void setup() {
   Serial.begin(115200);
   delay(500);
+  
+  // Initialize LittleFS (more robust than SPIFFS)
+  Serial.println("Initializing LittleFS...");
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS failed!");
+  } else {
+    Serial.println("LittleFS ready!");
+    LittleFS.end();  // Close it so CrashLogger can open it
+  }
+  
+  delay(500);
+  
   // Initialize crash logger
   crashLogger.begin();
     
   // Setup watchdog
-  esp_task_wdt_init(10, true);
+  esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 10000,  // 10 seconds
+    .idle_core_mask = 0,  // Don't watch idle tasks
+    .trigger_panic = true // Panic on timeout
+  };
+  esp_task_wdt_init(&wdt_config);
   esp_task_wdt_add(NULL);
   
   Serial.println("System ready");
@@ -74,6 +93,7 @@ void setup() {
 
   sendDiscovery();
 }
+
 
 void loop() {
   esp_task_wdt_reset();

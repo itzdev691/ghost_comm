@@ -2,7 +2,7 @@
 #define CRASH_LOGGER_H
 
 #include <Arduino.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #include <esp_system.h>
 
 #define CRASH_LOG_FILE "/crash_log.txt"

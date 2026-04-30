@@ -18,8 +18,8 @@
 #define OLED_SCL_PIN 27
 
 #elif defined(BOARD_ESP32_S3_ZERO)
-#define OLED_SDA_PIN 8
-#define OLED_SCL_PIN 9
+#define OLED_SDA_PIN 5
+#define OLED_SCL_PIN 6
 
 #elif defined(CONFIG_IDF_TARGET_ESP32C5) || defined(ARDUINO_ESP32C5_DEV)
 #define OLED_SDA_PIN 2

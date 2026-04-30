@@ -1,15 +1,15 @@
 #include "CrashLogger.h"
 
 void CrashLogger::begin() {
-    if (!SPIFFS.begin(true)) {
-        Serial.println("SPIFFS Mount Failed");
+    if (!LittleFS.begin(true)) {
+        Serial.println("LittleFS Mount Failed");
         return;
     }
     checkPreviousCrashes();
 }
 
 void CrashLogger::logCrash(const char* reason, const char* details) {
-    File file = SPIFFS.open(CRASH_LOG_FILE, FILE_APPEND);
+    File file = LittleFS.open(CRASH_LOG_FILE, FILE_APPEND);
     if (!file) return;
     
     file.printf("\n=== CRASH REPORT ===\n");
@@ -48,12 +48,12 @@ void CrashLogger::checkPreviousCrashes() {
 }
 
 void CrashLogger::printCrashLog() {
-    if (!SPIFFS.exists(CRASH_LOG_FILE)) {
+    if (!LittleFS.exists(CRASH_LOG_FILE)) {
         Serial.println("No crash log found");
         return;
     }
     
-    File file = SPIFFS.open(CRASH_LOG_FILE, FILE_READ);
+    File file = LittleFS.open(CRASH_LOG_FILE, FILE_READ);
     if (!file) {
         Serial.println("Failed to open crash log");
         return;
@@ -68,20 +68,20 @@ void CrashLogger::printCrashLog() {
 }
 
 void CrashLogger::clearLogs() {
-    SPIFFS.remove(CRASH_LOG_FILE);
+    LittleFS.remove(CRASH_LOG_FILE);
     Serial.println("Crash logs cleared");
 }
 
 void CrashLogger::rotateLogs() {
-    File file = SPIFFS.open(CRASH_LOG_FILE, FILE_READ);
+    File file = LittleFS.open(CRASH_LOG_FILE, FILE_READ);
     if (!file) return;
     
     size_t size = file.size();
     file.close();
     
     if (size > MAX_LOG_SIZE) {
-        File oldFile = SPIFFS.open(CRASH_LOG_FILE, FILE_READ);
-        File newFile = SPIFFS.open("/crash_log_tmp.txt", FILE_WRITE);
+        File oldFile = LittleFS.open(CRASH_LOG_FILE, FILE_READ);
+        File newFile = LittleFS.open("/crash_log_tmp.txt", FILE_WRITE);
         
         if (oldFile && newFile) {
             oldFile.seek(size - MAX_LOG_SIZE/2);
@@ -91,8 +91,8 @@ void CrashLogger::rotateLogs() {
             
             oldFile.close();
             newFile.close();
-            SPIFFS.remove(CRASH_LOG_FILE);
-            SPIFFS.rename("/crash_log_tmp.txt", CRASH_LOG_FILE);
+            LittleFS.remove(CRASH_LOG_FILE);
+            LittleFS.rename("/crash_log_tmp.txt", CRASH_LOG_FILE);
         }
     }
 }
