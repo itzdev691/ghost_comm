@@ -55,3 +55,7 @@ compile_commands.json
 scripts/fix_riscv_toolchain.py
 scripts/__pycache__/fix_riscv_toolchain.cpython-314.pyc
 main/idf_component.yml.orig
+.kiro/specs/peer-count-flapping/tasks.md
+.kiro/specs/peer-count-flapping/.config.kiro
+.kiro/specs/peer-count-flapping/design.md
+.kiro/specs/peer-count-flapping/bugfix.md

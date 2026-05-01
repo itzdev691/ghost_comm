@@ -14,33 +14,10 @@ static constexpr uint32_t FORWARD_DELAY_MAX_MS = 90;
 static constexpr size_t SEEN_MESSAGE_CACHE_SIZE = 24;
 
 
-// GPIO pins — overrides via build_flags per board (optional).
-#ifndef STATUS_BUTTON_PIN
-#define STATUS_BUTTON_PIN 12
-#endif
+// GPIO pins — all defined in board_user_config.h, edit that file for your hardware.
 
 #ifndef BAD_STATUS_PIN
 #define BAD_STATUS_PIN 9
-#endif
-
-#ifndef ONBOARD_LED_PIN
-#if defined(BOARD_ESP32_S3_ZERO)
-#define ONBOARD_LED_PIN 21
-#elif defined(LED_BUILTIN)
-#define ONBOARD_LED_PIN LED_BUILTIN
-#elif defined(BOARD_ESP32_DOIT)
-#define ONBOARD_LED_PIN 2
-#else
-#define ONBOARD_LED_PIN 2
-#endif
-#endif
-
-#ifndef ONBOARD_LED_USES_NEOPIXEL
-#if defined(BOARD_ESP32_S3_ZERO)
-#define ONBOARD_LED_USES_NEOPIXEL 1
-#else
-#define ONBOARD_LED_USES_NEOPIXEL 0
-#endif
 #endif
 
 #ifndef ONBOARD_LED_ACTIVE_HIGH
