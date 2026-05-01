@@ -9,8 +9,6 @@
 #include "Status/onboard_led.h"
 #include "CrashLog/CrashLogger.h"
 #include <esp_task_wdt.h>
-#include "esp_partition.h"
-#include "LittleFS.h"
 
 CrashLogger crashLogger;
 
@@ -28,30 +26,24 @@ static void onPeerLostUi(const uint8_t* macAddr) {
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(1000); // Longer delay for C5 USB CDC
   
-  // Initialize LittleFS (more robust than SPIFFS)
-  Serial.println("Initializing LittleFS...");
-  if (!LittleFS.begin(true)) {
-    Serial.println("LittleFS failed!");
-  } else {
-    Serial.println("LittleFS ready!");
-    LittleFS.end();  // Close it so CrashLogger can open it
-  }
+  Serial.println("\n\n=== ZypheraMesh Boot ===");
   
-  delay(500);
-  
-  // Initialize crash logger
+  // Initialize crash logger FIRST - before watchdog
+  Serial.println("Initializing crash logger...");
   crashLogger.begin();
-    
+  
   
   Serial.println("System ready");
-  delay(500);
-  // ... rest of your code
   pinMode(STATUS_BUTTON_PIN, INPUT_PULLDOWN);
   pinMode(BAD_STATUS_PIN, INPUT_PULLDOWN);
 
+  Serial.println("Configuring WiFi...");
+  
   configureWiFi();
+  
+  Serial.println("Initializing onboard LED...");
   initOnboardLed();
 
   PeerUiCallbacks peerUi{};
@@ -59,22 +51,32 @@ void setup() {
   peerUi.onPeerLost = onPeerLostUi;
   peerRegistrySetUiCallbacks(peerUi);
 
-  initDisplay();
+  Serial.println("Initializing display...");
+
+  
+  bool displayOk = initDisplay();
+  
+  if (!displayOk) {
+    Serial.println("WARNING: Display initialization failed, continuing anyway");
+  }
+
+  // Show any crash logs from the previous boot on the OLED before continuing
+  if (displayOk) {
+    showCrashLogOnDisplay();
+  }
+
+  Serial.println("Initializing ESP-NOW...");
+  
   initEspNow();
 
-  setDisplayStatus("ESP-NOW ready");
-  delay(2000);
-  setDisplayEvent("Waiting...");
-  renderDisplay();
+  if (displayOk) {
+    setDisplayStatus("ESP-NOW ready");
+    delay(1000);
+    setDisplayEvent("Waiting...");
+    renderDisplay();
+  }
 
-  Serial.println("ESP32 starting...");
-#ifdef BOARD_ESP32_DOIT
-  Serial.println("Board: ESP32-DOIT DevKit v1");
-#elif defined(BOARD_ESP32_S3_ZERO)
-  Serial.println("Board: Waveshare ESP32-S3 Zero");
-#else
-  Serial.println("Board: Unknown (using default pins)");
-#endif
+
   Serial.printf("MAC: %s\n", macToString(selfMac).c_str());
   Serial.printf("Node ID: %s\n", selfNodeId);
   Serial.printf("Good status pin: GPIO %u\n", STATUS_BUTTON_PIN);
@@ -82,22 +84,24 @@ void setup() {
   Serial.printf("Onboard LED pin: GPIO %u\n", ONBOARD_LED_PIN);
   Serial.printf("OLED SDA: GPIO %u, SCL: GPIO %u\n", OLED_SDA_PIN, OLED_SCL_PIN);
   Serial.printf("Press GPIO %u for Good, GPIO %u for Bad\n", STATUS_BUTTON_PIN, BAD_STATUS_PIN);
-  Serial.printf("OLED I2C wiring SDA=%u SCL=%u\n", OLED_SDA_PIN, OLED_SCL_PIN);
+  Serial.printf("Free heap: %u bytes\n", ESP.getFreeHeap());
 
+  esp_task_wdt_reset();
   sendDiscovery();
+  
+  Serial.println("=== Boot Complete ===\n");
 }
 
-
 void loop() {
-  esp_task_wdt_reset();
-  loopDisplay();  // ← added, handles pending renderDisplay() safely
+  
+  loopDisplay();
   loopOnboardLed();
   loopMesh();
 
   handleStatusInputs();
 
   if (millis() - lastDiscoveryMs >= DISCOVERY_INTERVAL_MS) {
-    lastDiscoveryMs = millis();  // ← was missing, prevents continuous firing
+    lastDiscoveryMs = millis();
     sendDiscovery();
   }
 

@@ -11,6 +11,10 @@
 #include "Config/app_config.h"
 #include "Network/node_state.h"
 #include "Network/peer_registry.h"
+#include "CrashLog/CrashLogger.h"
+
+// For reading the crash log file directly
+#include <LittleFS.h>
 
 Adafruit_SH1106G g_oled(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET_PIN);
 
@@ -136,6 +140,128 @@ void setDisplayEventFromPeer(const char* label, const uint8_t* macAddr) {
       peer->nodeId);
 }
 
+static bool pendingRender = false;
+
+void requestRender() {
+  pendingRender = true;
+}
+
+void loopDisplay() {
+  if (pendingRender) {
+    pendingRender = false;
+    renderDisplay();
+  }
+}
+
+void showCrashLogOnDisplay() {
+  if (!oledReady) return;
+  if (!LittleFS.exists(CRASH_LOG_FILE)) return;
+
+  File file = LittleFS.open(CRASH_LOG_FILE, FILE_READ);
+  if (!file) return;
+
+  // Read repeat count if present
+  uint32_t repeatCount = 0;
+  if (LittleFS.exists(CRASH_COUNT_FILE)) {
+    File cf = LittleFS.open(CRASH_COUNT_FILE, FILE_READ);
+    if (cf) {
+      repeatCount = cf.parseInt();
+      cf.close();
+    }
+  }
+
+  // Header screen
+  g_oled.clearDisplay();
+  g_oled.setTextSize(1);
+  g_oled.setTextColor(SH110X_WHITE);
+  g_oled.setCursor(0, 0);
+  g_oled.println(F("!! CRASH LOG !!"));
+  g_oled.println(F(""));
+  g_oled.printf("%u bytes\n", (unsigned)file.size());
+  if (repeatCount > 0) {
+    g_oled.printf("Repeated x%lu\n", (unsigned long)repeatCount);
+  }
+  g_oled.println(F(""));
+  g_oled.println(F("Showing in 2s..."));
+  g_oled.display();
+  delay(2000);
+
+  // Page through the log — 7 lines per screen (1 reserved for page indicator)
+  static const uint8_t LINES_PER_PAGE = 7;
+  static const uint8_t LINE_BUF = 22;  // 21 chars + null
+
+  char lines[LINES_PER_PAGE][LINE_BUF];
+  uint8_t lineCount = 0;
+  uint32_t pageNum = 1;
+
+  auto flushPage = [&]() {
+    g_oled.clearDisplay();
+    g_oled.setTextSize(1);
+    g_oled.setTextColor(SH110X_WHITE);
+    g_oled.setCursor(0, 0);
+    // Top row: page indicator
+    g_oled.printf("-- pg %lu --\n", pageNum++);
+    for (uint8_t i = 0; i < lineCount; i++) {
+      g_oled.println(lines[i]);
+    }
+    g_oled.display();
+    delay(3000);
+    lineCount = 0;
+  };
+
+  char ch;
+  uint8_t col = 0;
+  char lineBuf[LINE_BUF];
+  uint8_t lineBufPos = 0;
+
+  auto commitLine = [&]() {
+    lineBuf[lineBufPos] = '\0';
+    // Skip blank lines to save screen space
+    if (lineBufPos > 0) {
+      std::strncpy(lines[lineCount++], lineBuf, LINE_BUF - 1);
+      lines[lineCount - 1][LINE_BUF - 1] = '\0';
+      if (lineCount >= LINES_PER_PAGE) {
+        flushPage();
+      }
+    }
+    lineBufPos = 0;
+    col = 0;
+  };
+
+  while (file.available()) {
+    ch = (char)file.read();
+    if (ch == '\n' || ch == '\r') {
+      if (ch == '\n') commitLine();
+    } else {
+      if (col < LINE_BUF - 1) {
+        lineBuf[lineBufPos++] = ch;
+        col++;
+      }
+      // Long lines wrap automatically by character limit
+    }
+  }
+  // Flush any remaining partial line and partial page
+  if (lineBufPos > 0) commitLine();
+  if (lineCount > 0) flushPage();
+
+  file.close();
+
+  // Clear both the log and the repeat counter now that it's been shown
+  LittleFS.remove(CRASH_LOG_FILE);
+  LittleFS.remove(CRASH_COUNT_FILE);
+
+  // Done screen
+  g_oled.clearDisplay();
+  g_oled.setTextSize(1);
+  g_oled.setTextColor(SH110X_WHITE);
+  g_oled.setCursor(0, 0);
+  g_oled.println(F("-- End of log --"));
+  g_oled.println(F("Log cleared."));
+  g_oled.println(F("Resuming boot..."));
+  g_oled.display();
+  delay(1500);
+}
+
 void renderDisplay() {
   if (!oledReady) {
     return;
@@ -154,28 +280,10 @@ void renderDisplay() {
   g_oled.println(F("ZypheraMesh"));
   g_oled.println(selfLine);
   g_oled.println(peerLine);
+  g_oled.setCursor(0, 32);
   g_oled.println(oledStatusLine);
   g_oled.println(oledEventLine);
-#ifdef BOARD_ESP32_DOIT
-  g_oled.println(F("ESP32-DOIT"));
-#elif defined(BOARD_ESP32_S3_ZERO)
-  g_oled.println(F("ESP32-S3 Zero"));
-#else
-  g_oled.println(F("Unknown Board"));
-#endif
+  g_oled.println("v3.0.0");
   g_oled.display();
 }
 
-// ... renderDisplay() ...
-
-static volatile bool renderPending = false;
-
-void requestRender() {
-    renderPending = true;
-}
-
-void loopDisplay() {
-    if (!renderPending) return;
-    renderPending = false;
-    renderDisplay();
-}
