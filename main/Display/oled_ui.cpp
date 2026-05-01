@@ -283,7 +283,7 @@ void renderDisplay() {
   g_oled.setCursor(0, 32);
   g_oled.println(oledStatusLine);
   g_oled.println(oledEventLine);
-  g_oled.println("v3.0.0");
+  g_oled.println("v3.0.1");
   g_oled.display();
 }
 
