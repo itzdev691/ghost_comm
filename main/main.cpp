@@ -44,17 +44,10 @@ void setup() {
   // Initialize crash logger
   crashLogger.begin();
     
-  // Setup watchdog
-  esp_task_wdt_config_t wdt_config = {
-    .timeout_ms = 10000,  // 10 seconds
-    .idle_core_mask = 0,  // Don't watch idle tasks
-    .trigger_panic = true // Panic on timeout
-  };
-  esp_task_wdt_init(&wdt_config);
-  esp_task_wdt_add(NULL);
   
   Serial.println("System ready");
   delay(500);
+  // ... rest of your code
   pinMode(STATUS_BUTTON_PIN, INPUT_PULLDOWN);
   pinMode(BAD_STATUS_PIN, INPUT_PULLDOWN);
 

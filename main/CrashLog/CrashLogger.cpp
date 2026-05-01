@@ -60,9 +60,16 @@ void CrashLogger::printCrashLog() {
     }
     
     Serial.println("\n--- Previous Crash Logs ---");
-    while (file.available()) {
-        Serial.write(file.read());
+    
+    // Read in chunks with yielding
+    uint8_t buffer[256];
+    size_t bytesRead;
+    
+    while ((bytesRead = file.read(buffer, sizeof(buffer))) > 0) {
+        Serial.write(buffer, bytesRead);
+        delay(1);  // Yield to other tasks
     }
+    
     file.close();
     Serial.println("--- End of Logs ---\n");
 }
@@ -85,8 +92,14 @@ void CrashLogger::rotateLogs() {
         
         if (oldFile && newFile) {
             oldFile.seek(size - MAX_LOG_SIZE/2);
-            while (oldFile.available()) {
-                newFile.write(oldFile.read());
+            
+            // Use chunked I/O with yielding
+            uint8_t buffer[256];
+            size_t bytesRead;
+            
+            while ((bytesRead = oldFile.read(buffer, sizeof(buffer))) > 0) {
+                newFile.write(buffer, bytesRead);
+                delay(1);  // Yield
             }
             
             oldFile.close();
