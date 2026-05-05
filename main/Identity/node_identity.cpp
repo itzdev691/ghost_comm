@@ -5,6 +5,16 @@
 
 static constexpr char NODE_NAME[] = "YOUR_NODE_NAME";
 
+/**
+ * @brief Returns the human-readable name assigned to this node.
+ *
+ * The name is a compile-time constant defined by NODE_NAME above. It is
+ * used in the display and serial output to help identify individual nodes
+ * when debugging a larger network. It has no effect on the network protocol
+ * or connectivity and does not need to be unique across nodes.
+ *
+ * @return const char* Null-terminated string containing the node name.
+ */
 const char* getNodeName() {
   return NODE_NAME;
 }

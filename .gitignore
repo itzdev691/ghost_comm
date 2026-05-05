@@ -59,3 +59,6 @@ main/idf_component.yml.orig
 .kiro/specs/peer-count-flapping/.config.kiro
 .kiro/specs/peer-count-flapping/design.md
 .kiro/specs/peer-count-flapping/bugfix.md
+.kiro/specs/multi-channel-mesh/design.md
+
+.kiro/specs/multi-channel-mesh/.config.kiro

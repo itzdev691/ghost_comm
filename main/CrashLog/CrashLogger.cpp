@@ -10,7 +10,15 @@ bool CrashLogger::s_fsReady = false;
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-// Returns the last "Details: <X>" value written to the log, or empty string.
+/**
+ * @brief Reads the most recent "Details:" value from the crash log file.
+ *
+ * Scans every line of the log and returns the last line that starts with
+ * "Details: ", stripping the prefix. Returns an empty string if the file
+ * does not exist, cannot be opened, or contains no such line.
+ *
+ * @return String The last recorded details value, or "" if none found.
+ */
 static String readLastDetails() {
     if (!LittleFS.exists(CRASH_LOG_FILE)) return "";
 
@@ -31,7 +39,16 @@ static String readLastDetails() {
     return lastDetails;
 }
 
-// Read the repeat counter for the current crash reason. Returns 0 if none.
+/**
+ * @brief Reads the repeat counter for the current crash reason from the
+ *        counter file.
+ *
+ * The counter file stores a single integer representing how many times the
+ * most-recently logged crash has been seen consecutively. Returns 0 if the
+ * file does not exist or cannot be opened.
+ *
+ * @return uint32_t The current repeat count, or 0 if unavailable.
+ */
 static uint32_t readRepeatCount() {
     if (!LittleFS.exists(CRASH_COUNT_FILE)) return 0;
     File f = LittleFS.open(CRASH_COUNT_FILE, FILE_READ);
@@ -41,7 +58,14 @@ static uint32_t readRepeatCount() {
     return count;
 }
 
-// Write (overwrite) the repeat counter file.
+/**
+ * @brief Writes (overwrites) the repeat counter file with the given count.
+ *
+ * Creates or truncates the counter file and writes @p count as a decimal
+ * string. Silently returns if the file cannot be opened.
+ *
+ * @param count The repeat count value to persist.
+ */
 static void writeRepeatCount(uint32_t count) {
     File f = LittleFS.open(CRASH_COUNT_FILE, FILE_WRITE);
     if (!f) return;
@@ -53,6 +77,14 @@ static void writeRepeatCount(uint32_t count) {
 // Panic handler — registered with ESP-IDF's shutdown handler mechanism.
 // Runs during a crash, before the chip resets. Keep it minimal.
 // ---------------------------------------------------------------------------
+/**
+ * @brief ESP-IDF shutdown/panic handler called just before the chip resets.
+ *
+ * Appends a minimal crash record (uptime, free heap, reset reason) to the
+ * log file. Intentionally kept short to reduce the risk of a secondary fault
+ * during an already-unstable crash state. Does nothing if the filesystem was
+ * never successfully mounted (s_fsReady == false).
+ */
 void CrashLogger::panicHandler() {
     if (!s_fsReady) return;
 
@@ -70,6 +102,16 @@ void CrashLogger::panicHandler() {
 // ---------------------------------------------------------------------------
 // begin() — mount FS, register panic handler, check last boot's reset reason
 // ---------------------------------------------------------------------------
+/**
+ * @brief Initialises the CrashLogger subsystem.
+ *
+ * Mounts LittleFS (formatting on first use if necessary), marks the
+ * filesystem as ready, registers panicHandler() as an ESP-IDF shutdown
+ * handler so it runs on the next crash, and then calls
+ * checkPreviousCrashes() to evaluate and log the current boot's reset
+ * reason. Must be called once during setup() before any other CrashLogger
+ * methods.
+ */
 void CrashLogger::begin() {
     if (!LittleFS.begin(true)) {
         Serial.println("[CrashLogger] LittleFS mount failed");
@@ -92,6 +134,20 @@ void CrashLogger::begin() {
 // new block — we just increment the repeat counter file instead. The display
 // reads that counter and shows "x<N>" next to the entry.
 // ---------------------------------------------------------------------------
+/**
+ * @brief Appends a crash entry to the log, deduplicating consecutive repeats.
+ *
+ * Compares @p details against the last recorded "Details:" value. If they
+ * match, the repeat counter is incremented instead of writing a new block,
+ * keeping the log compact. If the crash is new or different, a full entry
+ * (uptime, free heap, reason, details) is appended and the counter file is
+ * removed. rotateLogs() is called afterwards to enforce the size limit.
+ *
+ * @param reason  Short human-readable label for the crash category
+ *                (e.g. "Unexpected reset").
+ * @param details Specific detail string (e.g. the reset-reason name).
+ *                May be nullptr or empty.
+ */
 void CrashLogger::logCrash(const char* reason, const char* details) {
     if (!s_fsReady) return;
 
@@ -129,6 +185,15 @@ void CrashLogger::logCrash(const char* reason, const char* details) {
 // ---------------------------------------------------------------------------
 // checkPreviousCrashes()
 // ---------------------------------------------------------------------------
+/**
+ * @brief Evaluates the current boot's reset reason and logs it if abnormal.
+ *
+ * Reads esp_reset_reason() and maps it to a human-readable string. Abnormal
+ * resets (panic, watchdog, brownout, unknown) are forwarded to logCrash().
+ * Normal resets (power-on, external pin, software, deep-sleep) are silently
+ * ignored. Always calls printCrashLog() at the end so the full log is echoed
+ * to Serial on every boot.
+ */
 void CrashLogger::checkPreviousCrashes() {
     esp_reset_reason_t reason = esp_reset_reason();
 
@@ -173,6 +238,14 @@ void CrashLogger::checkPreviousCrashes() {
 // ---------------------------------------------------------------------------
 // printCrashLog()
 // ---------------------------------------------------------------------------
+/**
+ * @brief Dumps the entire crash log file to Serial.
+ *
+ * Reads the log in 256-byte chunks and writes them directly to Serial,
+ * followed by the repeat count (if non-zero). Prints a "No crash log found"
+ * message if the file does not exist, and a failure message if it cannot be
+ * opened. Does nothing if the filesystem is not ready.
+ */
 void CrashLogger::printCrashLog() {
     if (!s_fsReady || !LittleFS.exists(CRASH_LOG_FILE)) {
         Serial.println("[CrashLogger] No crash log found");
@@ -205,6 +278,12 @@ void CrashLogger::printCrashLog() {
 // ---------------------------------------------------------------------------
 // clearLogs()
 // ---------------------------------------------------------------------------
+/**
+ * @brief Deletes both the crash log file and the repeat counter file.
+ *
+ * Removes CRASH_LOG_FILE and CRASH_COUNT_FILE from LittleFS and prints a
+ * confirmation to Serial. Does nothing if the filesystem is not ready.
+ */
 void CrashLogger::clearLogs() {
     if (!s_fsReady) return;
     LittleFS.remove(CRASH_LOG_FILE);
@@ -215,6 +294,15 @@ void CrashLogger::clearLogs() {
 // ---------------------------------------------------------------------------
 // rotateLogs()
 // ---------------------------------------------------------------------------
+/**
+ * @brief Trims the crash log file when it exceeds MAX_LOG_SIZE bytes.
+ *
+ * If the log file is within the size limit, returns immediately. Otherwise,
+ * copies the most recent MAX_LOG_SIZE/2 bytes into a temporary file, removes
+ * the original, and renames the temporary file back to CRASH_LOG_FILE. This
+ * keeps the newest entries while bounding flash usage. Does nothing if the
+ * filesystem is not ready or the file cannot be opened.
+ */
 void CrashLogger::rotateLogs() {
     if (!s_fsReady) return;
 

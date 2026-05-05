@@ -84,6 +84,14 @@ void configureWiFi() {
   WiFi.disconnect();
 
   esp_wifi_set_promiscuous(true);
+#ifdef ARDUINO_ESP32C5_DEV
+  // ESP32-C5 supports both 2.4 GHz and 5 GHz. Without explicitly selecting
+  // the 2.4 GHz band, esp_wifi_set_channel() may target the 5 GHz radio,
+  // putting this node on a different physical channel than the rest of the
+  // mesh and causing all unicast ESP-NOW sends (including discovery ACKs)
+  // to fail.
+  esp_wifi_set_band(WIFI_BAND_2G);
+#endif
   esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
 
