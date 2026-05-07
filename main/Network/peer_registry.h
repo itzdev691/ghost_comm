@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
+
 #include "Mesh/mesh_packet.h"
 
 struct PeerInfo {
@@ -16,6 +19,8 @@ struct PeerUiCallbacks {
   void (*onNewPeer)(const uint8_t* macAddr) = nullptr;
   void (*onPeerLost)(const uint8_t* macAddr) = nullptr;
 };
+
+extern portMUX_TYPE g_peerMux;
 
 void peerRegistrySetUiCallbacks(PeerUiCallbacks callbacks);
 

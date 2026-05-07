@@ -256,6 +256,9 @@ static void queueForward(const MeshMessage& incoming) {
   Serial.println("Dropped forward: queue full");
 }
 
+// Access to peer registry internals for LRU eviction
+extern PeerInfo peers[MAX_PEERS];
+
 bool ensureEspNowPeer(const uint8_t* macAddr) {
   if (esp_now_is_peer_exist(macAddr)) {
     return true;
@@ -267,6 +270,35 @@ bool ensureEspNowPeer(const uint8_t* macAddr) {
   peerInfo.encrypt = false;
 
   esp_err_t err = esp_now_add_peer(&peerInfo);
+
+  if (err == ESP_ERR_ESPNOW_FULL) {
+    // Evict the LRU non-broadcast peer from the ESP-NOW table.
+    // Use peers[].lastSeenMs as the source of truth for LRU ordering.
+    const uint8_t* lruMac = nullptr;
+    uint32_t oldestSeen = UINT32_MAX;
+
+    // Acquire lock to safely read peers[]
+    taskENTER_CRITICAL(&g_peerMux);
+    static uint8_t lruMacBuf[6];
+    for (size_t i = 0; i < MAX_PEERS; i++) {
+      if (!peers[i].active) continue;
+      if (std::memcmp(peers[i].mac, BROADCAST_MAC, 6) == 0) continue;
+      if (peers[i].lastSeenMs < oldestSeen) {
+        oldestSeen = peers[i].lastSeenMs;
+        std::memcpy(lruMacBuf, peers[i].mac, 6);
+        lruMac = lruMacBuf;
+      }
+    }
+    taskEXIT_CRITICAL(&g_peerMux);
+
+    if (lruMac != nullptr) {
+      Serial.printf("ESP-NOW table full; evicting LRU peer %s\n",
+                    macToString(lruMac).c_str());
+      removeEspNowPeer(lruMac);
+      err = esp_now_add_peer(&peerInfo);
+    }
+  }
+
   if (err != ESP_OK && err != ESP_ERR_ESPNOW_EXIST) {
     Serial.printf("Failed to add peer %s: %d\n", macToString(macAddr).c_str(), err);
     return false;
@@ -326,6 +358,13 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
   noteReceiveActivity();
   upsertPeer(macAddr, message.senderId);
 
+  // If this is a forwarded packet, also refresh the origin peer.
+  // MeshMessage carries no originId field, so pass nullptr to preserve any existing nodeId.
+  if (memcmp(message.originMac, macAddr, 6) != 0 &&
+      memcmp(message.originMac, selfMac, 6) != 0) {
+    upsertPeer(message.originMac, nullptr);
+  }
+
   MessageType type = static_cast<MessageType>(message.type);
   switch (type) {
     case MessageType::Discovery:
@@ -336,7 +375,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
           message.text);
       setDisplayStatus("Discovery rx");
       setDisplayEventFromPeer("DISC", macAddr);
-      renderDisplay();
+      requestRender();
       scheduleDiscoveryAck(macAddr);
       printPeers();
       break;
@@ -349,7 +388,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
           message.text);
       setDisplayStatus("Discovery ack");
       setDisplayEventFromPeer("ACK", macAddr);
-      renderDisplay();
+      requestRender();
       printPeers();
       break;
 
@@ -361,7 +400,7 @@ static void processIncomingPacket(const uint8_t* macAddr, const uint8_t* incomin
           message.text);
       setDisplayStatus(message.text);
       setDisplayEventFromPeer("STAT", macAddr);
-      renderDisplay();
+      requestRender();
       break;
 
     default:

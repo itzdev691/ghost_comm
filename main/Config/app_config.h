@@ -39,4 +39,4 @@ static constexpr uint8_t OLED_HEIGHT = 64;
 static constexpr int8_t OLED_RESET_PIN = -1;
 
 static constexpr size_t MAX_PEERS = 10;
-static constexpr uint32_t PEER_TIMEOUT_MS = 30000;
+static constexpr uint32_t PEER_TIMEOUT_MS = 60000;  // 12× DISCOVERY_INTERVAL_MS

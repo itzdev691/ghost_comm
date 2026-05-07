@@ -62,3 +62,10 @@ main/idf_component.yml.orig
 .kiro/specs/multi-channel-mesh/design.md
 
 .kiro/specs/multi-channel-mesh/.config.kiro
+test/BUG_CONDITION_TEST_RESULTS.md
+test/CHECKPOINT_TEST_RESULTS.md
+test/README.md
+test
+test/test_preservation.cpp
+RELEASE_NOTES_PEER_COUNT_FIX.md
+BUGFIX_IMPLEMENTATION_SUMMARY.md
