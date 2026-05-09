@@ -69,3 +69,4 @@ test
 test/test_preservation.cpp
 RELEASE_NOTES_PEER_COUNT_FIX.md
 BUGFIX_IMPLEMENTATION_SUMMARY.md
+idf_component.yml
