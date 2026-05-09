@@ -70,6 +70,10 @@ test
 test/test_preservation.cpp
 RELEASE_NOTES_PEER_COUNT_FIX.md
 BUGFIX_IMPLEMENTATION_SUMMARY.md
+<<<<<<< HEAD
 =======
 main/idf_component.yml
 >>>>>>> origin/main
+=======
+idf_component.yml
+>>>>>>> 4dca9a80671831aa0cd6913b86d0ba369892392b
